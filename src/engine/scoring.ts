@@ -1,20 +1,47 @@
 import type { ScoreProfileId, StatBlock } from "./types";
 
-export const SCORE_PROFILE_IDS: readonly ScoreProfileId[] = [
-  "balanced",
-  "physical",
-  "magic",
-  "physicalSpeed",
-  "magicSpeed",
-  "mixed",
-  "physicalBruiser",
-  "magicBruiser",
-  "tank",
-  "hpTank",
-  "defense",
-  "speed",
-  "support",
+export const SCORE_PROFILE_GROUPS: readonly {
+  label: string;
+  ids: readonly ScoreProfileId[];
+}[] = [
+  {
+    label: "汎用",
+    ids: ["balanced", "speed"],
+  },
+  {
+    label: "攻撃",
+    ids: [
+      "physical",
+      "magic",
+      "physicalSpeed",
+      "magicSpeed",
+      "mixed",
+      "physicalBruiser",
+      "magicBruiser",
+    ],
+  },
+  {
+    label: "耐久",
+    ids: ["tank", "hpTank", "defense"],
+  },
+  {
+    label: "支援・妨害",
+    ids: [
+      "healer",
+      "buffer",
+      "statDebuffer",
+      "statusController",
+      "dotDebuffer",
+      "purifier",
+      "reviver",
+      "utility",
+      "backlineSupport",
+    ],
+  },
 ];
+
+export const SCORE_PROFILE_IDS: readonly ScoreProfileId[] =
+  SCORE_PROFILE_GROUPS.flatMap((group) => group.ids);
 
 const PROFILES: Record<ScoreProfileId, StatBlock> = {
   balanced: { hp: 1, strength: 1, spirit: 1, defense: 1, speed: 1 },
@@ -29,7 +56,16 @@ const PROFILES: Record<ScoreProfileId, StatBlock> = {
   hpTank: { hp: 2.2, strength: 0.1, spirit: 0.1, defense: 1.1, speed: 0.2 },
   defense: { hp: 0.55, strength: 0.1, spirit: 0.1, defense: 2.4, speed: 0.25 },
   speed: { hp: 0.2, strength: 0.5, spirit: 0.5, defense: 0.2, speed: 2 },
-  support: { hp: 1.05, strength: 0.1, spirit: 0.9, defense: 0.75, speed: 1.45 },
+
+  healer: { hp: 0.9, strength: 0, spirit: 1.8, defense: 0.8, speed: 1.5 },
+  buffer: { hp: 1.15, strength: 0.1, spirit: 0.2, defense: 1, speed: 2 },
+  statDebuffer: { hp: 1, strength: 0.1, spirit: 0.2, defense: 0.9, speed: 2.1 },
+  statusController: { hp: 0.75, strength: 0.05, spirit: 0.15, defense: 0.65, speed: 2.5 },
+  dotDebuffer: { hp: 1.05, strength: 0.05, spirit: 0.2, defense: 0.95, speed: 2 },
+  purifier: { hp: 1.2, strength: 0, spirit: 0.5, defense: 1, speed: 1.8 },
+  reviver: { hp: 1.4, strength: 0, spirit: 1.2, defense: 1.1, speed: 1.3 },
+  utility: { hp: 1, strength: 0.25, spirit: 0.65, defense: 0.9, speed: 1.6 },
+  backlineSupport: { hp: 1.6, strength: 0.1, spirit: 0.4, defense: 1.5, speed: 0.5 },
 };
 
 export const SCORE_PROFILE_LABELS: Record<ScoreProfileId, string> = {
@@ -45,7 +81,16 @@ export const SCORE_PROFILE_LABELS: Record<ScoreProfileId, string> = {
   hpTank: "HP耐久",
   defense: "まもり特化",
   speed: "すばやさ特化",
-  support: "支援・回復",
+
+  healer: "ヒーラー",
+  buffer: "良いとりつき・バッファー",
+  statDebuffer: "悪いとりつき・能力ダウン",
+  statusController: "悪いとりつき・行動阻害",
+  dotDebuffer: "悪いとりつき・継続ダメージ",
+  purifier: "おはらい・浄化役",
+  reviver: "蘇生・立て直し役",
+  utility: "汎用サポート",
+  backlineSupport: "後衛・置物サポート",
 };
 
 export const SCORE_PROFILE_DESCRIPTIONS: Record<ScoreProfileId, string> = {
@@ -61,8 +106,20 @@ export const SCORE_PROFILE_DESCRIPTIONS: Record<ScoreProfileId, string> = {
   hpTank: "HPを最優先し、次にまもりを評価します。最大HPを伸ばしたい型向けです。",
   defense: "まもりへの配分を最優先する、防御特化型向けです。",
   speed: "すばやさを最優先し、攻撃系ステータスを次点で評価します。",
-  support: "すばやさ・HPを中心に、ようりょくとまもりも評価する支援・回復役向けです。",
+
+  healer: "ようりょく・すばやさを軸に、HPとまもりも評価します。回復量と行動回数を両立したい役向けです。",
+  buffer: "すばやさと耐久を重視します。良いとりつきを早く味方へ通し、その後も場に残る役を想定します。",
+  statDebuffer: "すばやさと耐久を重視します。ちから・まもり・ようりょく・すばやさダウン等の悪いとりつきを担当する役向けです。",
+  statusController: "すばやさを最優先し、次に最低限の耐久を評価します。混乱・睡眠・行動不能などで先に相手を止める役向けです。",
+  dotDebuffer: "すばやさと耐久を重視します。HP継続減少など、悪いとりつきを維持して削る役向けです。",
+  purifier: "すばやさ・HP・まもりを重視します。悪いとりつきを解除して味方を立て直す役向けです。",
+  reviver: "HP・ようりょく・まもりを厚めにしつつ、すばやさも評価します。蘇生や緊急回復で立て直す役向けです。",
+  utility: "すばやさと耐久を中心に、ようりょくも少し評価します。複数の支援行動をこなす汎用役向けです。",
+  backlineSupport: "HP・まもりを重視します。後衛スキルや交代前提のサポート役が、前に出た時に倒されにくい配分を評価します。",
 };
+
+export const SCORE_PROFILE_CAVEAT =
+  "役割評価はIV配分だけを順位付けします。とりつきの種類・成功率、スキル、必殺技、魂・装備、種族陣形そのものの強さはスコアに含みません。";
 
 export function scoreIv(iv: StatBlock, profile: ScoreProfileId): number {
   const weights = PROFILES[profile];
