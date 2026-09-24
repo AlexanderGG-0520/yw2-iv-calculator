@@ -4,8 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/sync-yokai-data.mjs --allow-fallback",
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "node scripts/sync-yokai-data.mjs --allow-fallback && tsc -b && vite build",
     "test": "vitest run",
     "preview": "vite preview --host 0.0.0.0",
     "sync:yokai": "node scripts/sync-yokai-data.mjs"
