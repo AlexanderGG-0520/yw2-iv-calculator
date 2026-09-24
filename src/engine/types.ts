@@ -22,8 +22,16 @@ export interface SportsSessions {
 export type ScoreProfileId =
   | "physical"
   | "magic"
+  | "physicalSpeed"
+  | "magicSpeed"
+  | "mixed"
+  | "physicalBruiser"
+  | "magicBruiser"
   | "tank"
+  | "hpTank"
+  | "defense"
   | "speed"
+  | "support"
   | "balanced";
 
 export interface SearchInput {
