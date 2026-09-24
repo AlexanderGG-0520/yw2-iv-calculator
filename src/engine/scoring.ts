@@ -43,6 +43,8 @@ export const SCORE_PROFILE_GROUPS: readonly {
 export const SCORE_PROFILE_IDS: readonly ScoreProfileId[] =
   SCORE_PROFILE_GROUPS.flatMap((group) => group.ids);
 
+const MIXED_BALANCE_BONUS_WEIGHT = 0.75;
+
 const PROFILES: Record<ScoreProfileId, StatBlock> = {
   balanced: { hp: 1, strength: 1, spirit: 1, defense: 1, speed: 1 },
   physical: { hp: 0.2, strength: 2, spirit: 0, defense: 0.5, speed: 1 },
@@ -99,7 +101,7 @@ export const SCORE_PROFILE_DESCRIPTIONS: Record<ScoreProfileId, string> = {
   magic: "ようりょくを最優先し、次にすばやさ、まもりを評価します。",
   physicalSpeed: "ちからとすばやさを強く評価する、先手物理アタッカー向けです。",
   magicSpeed: "ようりょくとすばやさを強く評価する、先手妖術アタッカー向けです。",
-  mixed: "ちから・ようりょくを同程度に評価し、両方の攻撃手段を使う型を想定します。",
+  mixed: "ちから・ようりょくの両方への投資を評価します。線形加重に加え、両方へ振った共通量にバランスボーナスを与える両刀型向けです。",
   physicalBruiser: "ちからを軸にHP・まもりも重視し、殴り合い性能を評価します。",
   magicBruiser: "ようりょくを軸にHP・まもりも重視し、耐久寄り妖術型を評価します。",
   tank: "まもりを最優先しつつHPも強く評価する、総合的な壁役向けです。",
@@ -123,11 +125,16 @@ export const SCORE_PROFILE_CAVEAT =
 
 export function scoreIv(iv: StatBlock, profile: ScoreProfileId): number {
   const weights = PROFILES[profile];
-  return (
+  const linearScore =
     (iv.hp / 2) * weights.hp +
     iv.strength * weights.strength +
     iv.spirit * weights.spirit +
     iv.defense * weights.defense +
-    iv.speed * weights.speed
-  );
+    iv.speed * weights.speed;
+
+  if (profile === "mixed") {
+    return linearScore + Math.min(iv.strength, iv.spirit) * MIXED_BALANCE_BONUS_WEIGHT;
+  }
+
+  return linearScore;
 }
