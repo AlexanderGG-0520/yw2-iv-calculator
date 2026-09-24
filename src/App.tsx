@@ -1,4 +1,4 @@
-import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { Copy, Search } from "lucide-react";
 import { calculateStats, evWeightedTotal, isValidIvSpread, ivWeightedTotal } from "./engine/calculationEngine";
 import { fitnessFromSessions, totalSessions } from "./engine/fitness";
@@ -61,8 +61,33 @@ function App() {
     );
   }, [filter]);
 
+  useEffect(() => {
+    if (filteredYokai.some((entry) => entry.id === speciesId)) return;
+
+    setSpeciesId(filteredYokai[0]?.id ?? "");
+    setResponse(null);
+  }, [filteredYokai, speciesId]);
+
+  const forwardEvTotal = evWeightedTotal(forwardEv);
+  const forwardSessionTotal = totalSessions(forwardSessions);
+  const forwardTrainingError = useMemo(() => {
+    if (STAT_KEYS.some((stat) => !Number.isInteger(forwardEv[stat]) || forwardEv[stat] < 0)) {
+      return "性格EVは0以上の整数で入力してください。";
+    }
+    if (forwardEvTotal > 20) {
+      return "性格EVの加重合計が20を超えています。HPは2で割って数えます。";
+    }
+    if (Object.values(forwardSessions).some((value) => !Number.isInteger(value) || value < 0 || value > 5)) {
+      return "スポーツクラブ回数は各項目0〜5の整数で入力してください。";
+    }
+    if (forwardSessionTotal > 5) {
+      return "スポーツクラブは4種合計で5回までです。";
+    }
+    return "";
+  }, [forwardEv, forwardEvTotal, forwardSessions, forwardSessionTotal]);
+
   const forwardStats = useMemo(() => {
-    if (!forwardSpeciesId) return zeroBlock();
+    if (!forwardSpeciesId || forwardTrainingError) return null;
     return calculateStats(
       getYokaiSpecies(forwardSpeciesId),
       forwardLevel,
@@ -71,7 +96,15 @@ function App() {
       fitnessFromSessions(forwardSessions),
       forwardEquipment,
     );
-  }, [forwardSpeciesId, forwardLevel, forwardIv, forwardEv, forwardSessions, forwardEquipment]);
+  }, [
+    forwardSpeciesId,
+    forwardLevel,
+    forwardIv,
+    forwardEv,
+    forwardSessions,
+    forwardEquipment,
+    forwardTrainingError,
+  ]);
 
   const updateBlock = (
     setter: Dispatch<SetStateAction<StatBlock>>,
@@ -282,7 +315,7 @@ function App() {
 
         <StatInputs title="個体値" values={forwardIv} min={0} onChange={(stat, value) => updateBlock(setForwardIv, stat, value)} />
         <StatInputs
-          title={"性格EV（加重合計 " + evWeightedTotal(forwardEv) + " / 20）"}
+          title={"性格EV（加重合計 " + forwardEvTotal + " / 20）"}
           values={forwardEv}
           min={0}
           onChange={(stat, value) => updateBlock(setForwardEv, stat, value)}
@@ -290,16 +323,22 @@ function App() {
         <SportsInputs values={forwardSessions} onChange={setForwardSessions} />
         <StatInputs title="装備補正" values={forwardEquipment} onChange={(stat, value) => updateBlock(setForwardEquipment, stat, value)} />
 
+        {forwardTrainingError ? <p className="error">{forwardTrainingError}</p> : null}
+
         <div className="forward-output">
           <h3>計算結果</h3>
-          <div className="result-stats">
-            {STAT_KEYS.map((stat) => (
-              <div key={stat}>
-                <span>{statLabel[stat]}</span>
-                <strong>{forwardStats[stat]}</strong>
-              </div>
-            ))}
-          </div>
+          {forwardStats ? (
+            <div className="result-stats">
+              {STAT_KEYS.map((stat) => (
+                <div key={stat}>
+                  <span>{statLabel[stat]}</span>
+                  <strong>{forwardStats[stat]}</strong>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="empty-state">育成条件を修正すると計算結果を表示します。</p>
+          )}
         </div>
       </section>
 
