@@ -15,6 +15,7 @@ const hpHeavy: StatBlock = { hp: 80, strength: 0, spirit: 0, defense: 0, speed: 
 const defenseHeavy: StatBlock = { hp: 0, strength: 0, spirit: 0, defense: 40, speed: 0 };
 const mixedBalanced: StatBlock = { hp: 0, strength: 20, spirit: 20, defense: 0, speed: 0 };
 const mixedSkewed: StatBlock = { hp: 0, strength: 30, spirit: 10, defense: 0, speed: 0 };
+const mixedSkewedReverse: StatBlock = { hp: 0, strength: 10, spirit: 30, defense: 0, speed: 0 };
 
 describe("score profiles", () => {
   it("exposes labels and descriptions for every profile", () => {
@@ -44,13 +45,7 @@ describe("score profiles", () => {
 
     expect(scoreIv(mixedBalanced, "mixed")).toBeGreaterThan(scoreIv(mixedSkewed, "mixed"));
     expect(scoreIv(mixedSkewed, "mixed")).toBeGreaterThan(scoreIv(strengthHeavy, "mixed"));
-    expect(scoreIv(mixedBalanced, "mixed")).toBe(scoreIv({
-      hp: 0,
-      strength: 20,
-      spirit: 20,
-      defense: 0,
-      speed: 0,
-    }, "mixed"));
+    expect(scoreIv(mixedSkewed, "mixed")).toBe(scoreIv(mixedSkewedReverse, "mixed"));
   });
 
   it("gives support roles distinct priorities", () => {
