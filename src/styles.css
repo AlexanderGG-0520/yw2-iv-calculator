@@ -391,3 +391,64 @@ th button {
     grid-template-columns: 1fr;
   }
 }
+
+.hero {
+  align-items: start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin: 0 auto 1rem;
+  max-width: 1180px;
+}
+
+.hero > div:first-child {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.hero + .panel,
+.hero ~ .panel,
+.hero ~ .summary {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 1180px;
+}
+
+.eyebrow {
+  color: #25675f;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.primary-action {
+  font-weight: 800;
+}
+
+.status-good {
+  color: #25675f;
+  font-weight: 700;
+}
+
+.footer-note {
+  color: #687588;
+  font-size: 0.78rem;
+  margin: 1rem auto 0;
+  max-width: 1180px;
+  text-align: center;
+}
+
+.sports-grid {
+  grid-template-columns: repeat(4, minmax(118px, 1fr));
+}
+
+@media (max-width: 720px) {
+  .hero {
+    display: grid;
+  }
+
+  .sports-grid {
+    grid-template-columns: repeat(2, minmax(118px, 1fr));
+  }
+}
