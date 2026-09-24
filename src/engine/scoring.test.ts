@@ -13,6 +13,8 @@ const spiritHeavy: StatBlock = { hp: 0, strength: 0, spirit: 40, defense: 0, spe
 const speedHeavy: StatBlock = { hp: 0, strength: 0, spirit: 0, defense: 0, speed: 40 };
 const hpHeavy: StatBlock = { hp: 80, strength: 0, spirit: 0, defense: 0, speed: 0 };
 const defenseHeavy: StatBlock = { hp: 0, strength: 0, spirit: 0, defense: 40, speed: 0 };
+const mixedBalanced: StatBlock = { hp: 0, strength: 20, spirit: 20, defense: 0, speed: 0 };
+const mixedSkewed: StatBlock = { hp: 0, strength: 30, spirit: 10, defense: 0, speed: 0 };
 
 describe("score profiles", () => {
   it("exposes labels and descriptions for every profile", () => {
@@ -33,6 +35,22 @@ describe("score profiles", () => {
     expect(scoreIv(speedHeavy, "speed")).toBeGreaterThan(scoreIv(defenseHeavy, "speed"));
     expect(scoreIv(hpHeavy, "hpTank")).toBeGreaterThan(scoreIv(speedHeavy, "hpTank"));
     expect(scoreIv(defenseHeavy, "defense")).toBeGreaterThan(scoreIv(hpHeavy, "defense"));
+  });
+
+  it("rewards investment in both attacking stats for mixed attackers", () => {
+    expect(scoreIv(strengthHeavy, "mixed")).toBe(54);
+    expect(scoreIv(mixedSkewed, "mixed")).toBe(61.5);
+    expect(scoreIv(mixedBalanced, "mixed")).toBe(69);
+
+    expect(scoreIv(mixedBalanced, "mixed")).toBeGreaterThan(scoreIv(mixedSkewed, "mixed"));
+    expect(scoreIv(mixedSkewed, "mixed")).toBeGreaterThan(scoreIv(strengthHeavy, "mixed"));
+    expect(scoreIv(mixedBalanced, "mixed")).toBe(scoreIv({
+      hp: 0,
+      strength: 20,
+      spirit: 20,
+      defense: 0,
+      speed: 0,
+    }, "mixed"));
   });
 
   it("gives support roles distinct priorities", () => {
