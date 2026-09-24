@@ -2,7 +2,7 @@ import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { Copy, Search } from "lucide-react";
 import { calculateStats, evWeightedTotal, isValidIvSpread, ivWeightedTotal } from "./engine/calculationEngine";
 import { fitnessFromSessions, totalSessions } from "./engine/fitness";
-import { SCORE_PROFILE_DESCRIPTIONS, SCORE_PROFILE_IDS, SCORE_PROFILE_LABELS } from "./engine/scoring";
+import { SCORE_PROFILE_CAVEAT, SCORE_PROFILE_DESCRIPTIONS, SCORE_PROFILE_GROUPS, SCORE_PROFILE_LABELS } from "./engine/scoring";
 import {
   STAT_KEYS,
   type ReverseResult,
@@ -205,17 +205,22 @@ function App() {
           <label>
             評価
             <select value={scoreProfile} onChange={(event) => setScoreProfile(event.target.value as ScoreProfileId)}>
-              {SCORE_PROFILE_IDS.map((id) => (
-                <option key={id} value={id}>{SCORE_PROFILE_LABELS[id]}</option>
+              {SCORE_PROFILE_GROUPS.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.ids.map((id) => (
+                    <option key={id} value={id}>{SCORE_PROFILE_LABELS[id]}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </label>
         </section>
 
-        <p className="score-profile-info">
+        <div className="score-profile-info">
           <strong>{SCORE_PROFILE_LABELS[scoreProfile]}</strong>
           <span>{SCORE_PROFILE_DESCRIPTIONS[scoreProfile]}</span>
-        </p>
+          <span className="muted">{SCORE_PROFILE_CAVEAT}</span>
+        </div>
 
         <StatInputs
           title="実機ステータス"
