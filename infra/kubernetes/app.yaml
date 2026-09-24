@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: ghcr.io/alexandergg-0520/yw2-iv-calculator:a6c1db1224c175d4822eb4e71e0e751aad3af93e
+          image: ghcr.io/alexandergg-0520/yw2-iv-calculator:a2bb012a455c4196610084b474dc00f8bfb6074e
           ports:
             - containerPort: 80
           resources:
