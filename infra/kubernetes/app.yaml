@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yw2-iv-calculator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: yw2-iv-calculator
+  template:
+    metadata:
+      labels:
+        app: yw2-iv-calculator
+    spec:
+      containers:
+        - name: web
+          image: ghcr.io/alexandergg-0520/yw2-iv-calculator:6a04bde75fee02fe266062d1d42708f213e3e61f
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          securityContext:
+            allowPrivilegeEscalation: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: yw2-iv-calculator
+spec:
+  selector:
+    app: yw2-iv-calculator
+  ports:
+    - port: 80
+      targetPort: 80

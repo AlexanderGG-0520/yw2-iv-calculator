@@ -1,0 +1,138 @@
+name: Publish GHCR image
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: publish-ghcr-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  test-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Prepare lowercase image name
+        id: image
+        shell: bash
+        run: |
+          echo "name=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ steps.image.outputs.name }}
+          tags: |
+            type=raw,value=${{ github.sha }}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha,prefix=sha-
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  update-gitops:
+    needs: test-and-publish
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Update immutable image tag
+        env:
+          IMAGE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          current="$(git rev-parse HEAD)"
+          if [[ "$current" != "$IMAGE_SHA" ]]; then
+            echo "main advanced to $current; skipping stale deployment update for $IMAGE_SHA"
+            exit 0
+          fi
+
+          python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          sha = os.environ["IMAGE_SHA"]
+          path = Path("infra/kubernetes/app.yaml")
+          content = path.read_text()
+
+          content, count = re.subn(
+              r"(image:\s+ghcr\.io/alexandergg-0520/yw2-iv-calculator:)[^\s]+",
+              rf"\g<1>{sha}",
+              content,
+          )
+          if count != 1:
+              raise SystemExit(
+                  f"expected exactly one yw2-iv-calculator image reference, found {count}"
+              )
+
+          path.write_text(content)
+          PY
+
+      - name: Commit deployment revision
+        env:
+          IMAGE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- infra/kubernetes/app.yaml; then
+            echo "Deployment manifest already references $IMAGE_SHA"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add infra/kubernetes/app.yaml
+          git commit -m "chore(deploy): yw2-iv-calculator ${IMAGE_SHA:0:12} [skip ci]"
+          git push origin HEAD:main
