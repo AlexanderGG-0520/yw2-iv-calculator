@@ -38,9 +38,6 @@ spec:
             periodSeconds: 30
           securityContext:
             allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
 ---
 apiVersion: v1
 kind: Service
