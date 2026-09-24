@@ -92,6 +92,33 @@ Docker:
 docker compose --profile local up --build
 ```
 
+
+## GitOps / Argo CD
+
+本番用manifestは `infra/kubernetes`、Argo CD Application定義は `infra/argocd/application.yaml` に置いています。
+
+mainへpushされたコミットでは次の順に更新されます。
+
+1. テストとproduction build
+2. `ghcr.io/alexandergg-0520/yw2-iv-calculator:<commit SHA>` をpublish
+3. `infra/kubernetes/app.yaml` のimage tagを同じcommit SHAへ自動更新
+4. GitHub Actions botがdeployment revisionをmainへcommit
+5. Argo CDがmainの `infra/kubernetes` を検知して自動sync
+
+Argo CD側は `automated.prune=true` と `automated.selfHeal=true` です。
+
+Application自体はclusterへ一度bootstrapする必要があります。その後のアプリ更新にはclusterへの直接操作は不要です。
+
+## Dependabot
+
+`.github/dependabot.yml` で次を毎週月曜09:00 JSTに確認します。
+
+- npm
+- GitHub Actions
+- Docker base image
+
+同一ecosystemの更新はまとめてPR化します。
+
 ## 非公式ツール
 
 このプロジェクトはファン制作の非公式ツールです。
