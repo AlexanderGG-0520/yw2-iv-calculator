@@ -31,7 +31,15 @@ export type ScoreProfileId =
   | "hpTank"
   | "defense"
   | "speed"
-  | "support"
+  | "healer"
+  | "buffer"
+  | "statDebuffer"
+  | "statusController"
+  | "dotDebuffer"
+  | "purifier"
+  | "reviver"
+  | "utility"
+  | "backlineSupport"
   | "balanced";
 
 export interface SearchInput {
