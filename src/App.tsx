@@ -2,7 +2,7 @@ import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { Copy, Search } from "lucide-react";
 import { calculateStats, evWeightedTotal, isValidIvSpread, ivWeightedTotal } from "./engine/calculationEngine";
 import { fitnessFromSessions, totalSessions } from "./engine/fitness";
-import { SCORE_PROFILE_LABELS } from "./engine/scoring";
+import { SCORE_PROFILE_DESCRIPTIONS, SCORE_PROFILE_IDS, SCORE_PROFILE_LABELS } from "./engine/scoring";
 import {
   STAT_KEYS,
   type ReverseResult,
@@ -205,12 +205,17 @@ function App() {
           <label>
             評価
             <select value={scoreProfile} onChange={(event) => setScoreProfile(event.target.value as ScoreProfileId)}>
-              {(Object.keys(SCORE_PROFILE_LABELS) as ScoreProfileId[]).map((id) => (
+              {SCORE_PROFILE_IDS.map((id) => (
                 <option key={id} value={id}>{SCORE_PROFILE_LABELS[id]}</option>
               ))}
             </select>
           </label>
         </section>
+
+        <p className="score-profile-info">
+          <strong>{SCORE_PROFILE_LABELS[scoreProfile]}</strong>
+          <span>{SCORE_PROFILE_DESCRIPTIONS[scoreProfile]}</span>
+        </p>
 
         <StatInputs
           title="実機ステータス"
