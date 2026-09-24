@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   SCORE_PROFILE_DESCRIPTIONS,
+  SCORE_PROFILE_GROUPS,
   SCORE_PROFILE_IDS,
   SCORE_PROFILE_LABELS,
   scoreIv,
@@ -15,7 +16,9 @@ const defenseHeavy: StatBlock = { hp: 0, strength: 0, spirit: 0, defense: 40, sp
 
 describe("score profiles", () => {
   it("exposes labels and descriptions for every profile", () => {
-    expect(SCORE_PROFILE_IDS).toHaveLength(13);
+    expect(SCORE_PROFILE_IDS).toHaveLength(21);
+    expect(new Set(SCORE_PROFILE_IDS).size).toBe(SCORE_PROFILE_IDS.length);
+    expect(SCORE_PROFILE_GROUPS.flatMap((group) => group.ids)).toEqual(SCORE_PROFILE_IDS);
 
     for (const id of SCORE_PROFILE_IDS) {
       expect(SCORE_PROFILE_LABELS[id].length).toBeGreaterThan(0);
@@ -24,12 +27,21 @@ describe("score profiles", () => {
     }
   });
 
-  it("ranks specialized spreads according to their intended axes", () => {
+  it("ranks offensive and defensive spreads according to their intended axes", () => {
     expect(scoreIv(strengthHeavy, "physical")).toBeGreaterThan(scoreIv(spiritHeavy, "physical"));
     expect(scoreIv(spiritHeavy, "magic")).toBeGreaterThan(scoreIv(strengthHeavy, "magic"));
     expect(scoreIv(speedHeavy, "speed")).toBeGreaterThan(scoreIv(defenseHeavy, "speed"));
     expect(scoreIv(hpHeavy, "hpTank")).toBeGreaterThan(scoreIv(speedHeavy, "hpTank"));
     expect(scoreIv(defenseHeavy, "defense")).toBeGreaterThan(scoreIv(hpHeavy, "defense"));
+  });
+
+  it("gives support roles distinct priorities", () => {
+    expect(scoreIv(spiritHeavy, "healer")).toBeGreaterThan(scoreIv(strengthHeavy, "healer"));
+    expect(scoreIv(speedHeavy, "buffer")).toBeGreaterThan(scoreIv(strengthHeavy, "buffer"));
+    expect(scoreIv(speedHeavy, "statDebuffer")).toBeGreaterThan(scoreIv(strengthHeavy, "statDebuffer"));
+    expect(scoreIv(speedHeavy, "statusController")).toBeGreaterThan(scoreIv(hpHeavy, "statusController"));
+    expect(scoreIv(speedHeavy, "dotDebuffer")).toBeGreaterThan(scoreIv(strengthHeavy, "dotDebuffer"));
+    expect(scoreIv(hpHeavy, "backlineSupport")).toBeGreaterThan(scoreIv(strengthHeavy, "backlineSupport"));
   });
 
   it("keeps balanced evaluation neutral across weighted IV allocation", () => {
