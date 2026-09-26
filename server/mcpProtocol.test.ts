@@ -29,8 +29,8 @@ function modernParams(extra: Record<string, unknown> = {}) {
 }
 
 describe("MCP protocol", () => {
-  it("supports modern server/discover without an initialize handshake", () => {
-    const response = handleMcpRpc(
+  it("supports modern server/discover without an initialize handshake", async () => {
+    const response = await handleMcpRpc(
       {
         jsonrpc: "2.0",
         id: 1,
@@ -46,8 +46,8 @@ describe("MCP protocol", () => {
     expect(payload.result.resultType).toBe("complete");
   });
 
-  it("lists tools for modern MCP clients", () => {
-    const response = handleMcpRpc(
+  it("lists tools for modern MCP clients", async () => {
+    const response = await handleMcpRpc(
       {
         jsonrpc: "2.0",
         id: 2,
@@ -64,8 +64,8 @@ describe("MCP protocol", () => {
     expect(payload.result.resultType).toBe("complete");
   });
 
-  it("calls a tool with the modern protocol envelope", () => {
-    const response = handleMcpRpc(
+  it("calls a tool with the modern protocol envelope", async () => {
+    const response = await handleMcpRpc(
       {
         jsonrpc: "2.0",
         id: 3,
@@ -84,8 +84,8 @@ describe("MCP protocol", () => {
     expect(payload.result.resultType).toBe("complete");
   });
 
-  it("rejects modern calls whose routing headers do not match JSON-RPC", () => {
-    const response = handleMcpRpc(
+  it("rejects modern calls whose routing headers do not match JSON-RPC", async () => {
+    const response = await handleMcpRpc(
       {
         jsonrpc: "2.0",
         id: 4,
@@ -103,9 +103,9 @@ describe("MCP protocol", () => {
     expect(payload.error.code).toBe(-32020);
   });
 
-  it("rejects unsupported modern protocol versions with the MCP error code", () => {
+  it("rejects unsupported modern protocol versions with the MCP error code", async () => {
     const unsupported = "2026-09-01";
-    const response = handleMcpRpc(
+    const response = await handleMcpRpc(
       {
         jsonrpc: "2.0",
         id: 5,
@@ -130,8 +130,8 @@ describe("MCP protocol", () => {
     expect(payload.error.data.supported).toContain(MCP_MODERN_VERSION);
   });
 
-  it("keeps legacy initialize + tools/list compatibility", () => {
-    const initialize = handleMcpRpc({
+  it("keeps legacy initialize + tools/list compatibility", async () => {
+    const initialize = await handleMcpRpc({
       jsonrpc: "2.0",
       id: 6,
       method: "initialize",
@@ -145,7 +145,7 @@ describe("MCP protocol", () => {
     const initPayload = initialize.payload as any;
     expect(initPayload.result.protocolVersion).toBe("2025-06-18");
 
-    const list = handleMcpRpc({
+    const list = await handleMcpRpc({
       jsonrpc: "2.0",
       id: 7,
       method: "tools/list",
@@ -157,8 +157,8 @@ describe("MCP protocol", () => {
     expect(listPayload.result.resultType).toBeUndefined();
   });
 
-  it("returns tool validation failures as MCP tool errors", () => {
-    const response = handleMcpRpc({
+  it("returns tool validation failures as MCP tool errors", async () => {
+    const response = await handleMcpRpc({
       jsonrpc: "2.0",
       id: 8,
       method: "tools/call",
