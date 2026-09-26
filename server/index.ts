@@ -197,6 +197,10 @@ async function serveStatic(
 }
 
 const server = createServer((req, res) => {
+  res.setHeader("Origin-Agent-Cluster", "?1");
+  res.setHeader("Permissions-Policy", "tools=(self)");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+
   void (async () => {
     const url = new URL(req.url ?? "/", "http://localhost");
 
