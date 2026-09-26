@@ -10,8 +10,15 @@ const manifest = `apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: yw2-iv-calculator
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: yw2-iv-calculator
@@ -24,7 +31,8 @@ spec:
         - name: web
           image: ghcr.io/alexandergg-0520/yw2-iv-calculator:${sha}
           ports:
-            - containerPort: 8080
+            - name: http
+              containerPort: 8080
           resources:
             requests:
               cpu: 25m
@@ -57,12 +65,15 @@ apiVersion: v1
 kind: Service
 metadata:
   name: yw2-iv-calculator
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   selector:
     app: yw2-iv-calculator
   ports:
-    - port: 80
-      targetPort: 8080
+    - name: http
+      port: 80
+      targetPort: http
 `;
 
 fs.writeFileSync("infra/kubernetes/app.yaml", manifest);
