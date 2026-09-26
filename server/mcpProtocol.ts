@@ -28,6 +28,11 @@ export interface McpRpcHttpResult {
   payload?: unknown;
 }
 
+export type McpToolExecutor = (
+  name: string,
+  args: unknown,
+) => unknown | Promise<unknown>;
+
 type JsonRpcId = string | number | null;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -268,10 +273,11 @@ function initialize(
   });
 }
 
-export function handleMcpRpc(
+export async function handleMcpRpc(
   body: unknown,
   headers: Record<string, string | undefined> = {},
-): McpRpcHttpResult {
+  executeTool: McpToolExecutor = executeAgentTool,
+): Promise<McpRpcHttpResult> {
   if (!isRecord(body)) {
     return failure(null, -32600, "Invalid Request");
   }
@@ -339,7 +345,7 @@ export function handleMcpRpc(
     }
 
     try {
-      const result = executeAgentTool(name, params.arguments ?? {});
+      const result = await executeTool(name, params.arguments ?? {});
       return success(id, toolCallResult(result, modern));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
