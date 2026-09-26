@@ -97,46 +97,92 @@ function isModernRequest(
   headers: Record<string, string | undefined>,
 ): boolean {
   if (method === "server/discover") return true;
-  if (header(headers, "MCP-Protocol-Version") === MCP_MODERN_VERSION) return true;
+
+  const protocolHeader = header(headers, "MCP-Protocol-Version");
+  if (protocolHeader === MCP_MODERN_VERSION) return true;
+  if (
+    protocolHeader &&
+    !(MCP_LEGACY_VERSIONS as readonly string[]).includes(protocolHeader)
+  ) {
+    return true;
+  }
 
   const meta = isRecord(params._meta) ? params._meta : undefined;
-  return meta?.[PROTOCOL_VERSION_META_KEY] === MCP_MODERN_VERSION;
+  const metaVersion = meta?.[PROTOCOL_VERSION_META_KEY];
+  if (metaVersion === MCP_MODERN_VERSION) return true;
+  return (
+    typeof metaVersion === "string" &&
+    !(MCP_LEGACY_VERSIONS as readonly string[]).includes(metaVersion)
+  );
 }
+
+type ModernEnvelopeError = {
+  code: number;
+  message: string;
+  data?: unknown;
+};
 
 function validateModernEnvelope(
   method: string,
   params: Record<string, unknown>,
   headers: Record<string, string | undefined>,
-): string | null {
+): ModernEnvelopeError | null {
+  if (!isRecord(params._meta)) {
+    return {
+      code: -32602,
+      message: "Modern MCP requests require params._meta",
+    };
+  }
+
   const protocolHeader = header(headers, "MCP-Protocol-Version");
-  if (protocolHeader !== MCP_MODERN_VERSION) {
-    return "MCP-Protocol-Version header must be " + MCP_MODERN_VERSION;
+  const metaVersion = params._meta[PROTOCOL_VERSION_META_KEY];
+
+  if (
+    typeof protocolHeader !== "string" ||
+    typeof metaVersion !== "string" ||
+    protocolHeader !== metaVersion
+  ) {
+    return {
+      code: -32020,
+      message: "MCP-Protocol-Version header must match params._meta protocolVersion",
+    };
+  }
+
+  if (metaVersion !== MCP_MODERN_VERSION) {
+    return {
+      code: -32022,
+      message: "Unsupported protocol version",
+      data: {
+        requested: metaVersion,
+        supported: [MCP_MODERN_VERSION, ...MCP_LEGACY_VERSIONS],
+      },
+    };
+  }
+
+  if (!isRecord(params._meta["io.modelcontextprotocol/clientCapabilities"])) {
+    return {
+      code: -32602,
+      message:
+        "params._meta.io.modelcontextprotocol/clientCapabilities is required",
+    };
   }
 
   const methodHeader = header(headers, "Mcp-Method");
   if (methodHeader !== method) {
-    return "Mcp-Method header must match the JSON-RPC method";
+    return {
+      code: -32020,
+      message: "Mcp-Method header must match the JSON-RPC method",
+    };
   }
 
   if (method === "tools/call") {
     const requestedName = typeof params.name === "string" ? params.name : "";
     if (header(headers, "Mcp-Name") !== requestedName) {
-      return "Mcp-Name header must match params.name";
+      return {
+        code: -32020,
+        message: "Mcp-Name header must match params.name",
+      };
     }
-  }
-
-  if (!isRecord(params._meta)) {
-    return "Modern MCP requests require params._meta";
-  }
-
-  const metaVersion = params._meta[PROTOCOL_VERSION_META_KEY];
-  if (metaVersion !== MCP_MODERN_VERSION) {
-    return (
-      "params._meta." +
-      PROTOCOL_VERSION_META_KEY +
-      " must be " +
-      MCP_MODERN_VERSION
-    );
   }
 
   return null;
@@ -249,9 +295,13 @@ export function handleMcpRpc(
   if (modern) {
     const envelopeError = validateModernEnvelope(method, params, headers);
     if (envelopeError) {
-      return failure(id, -32020, "Header or protocol envelope mismatch", {
-        detail: envelopeError,
-      }, 400);
+      return failure(
+        id,
+        envelopeError.code,
+        envelopeError.message,
+        envelopeError.data,
+        400,
+      );
     }
   }
 
