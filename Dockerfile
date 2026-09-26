@@ -12,9 +12,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8080
 
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/dist-server ./dist-server
+COPY --from=build --chown=1000:1000 /app/dist ./dist
+COPY --from=build --chown=1000:1000 /app/dist-server ./dist-server
 
-USER node
+USER 1000:1000
 EXPOSE 8080
 CMD ["node", "dist-server/index.js"]
