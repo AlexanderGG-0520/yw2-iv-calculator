@@ -93,6 +93,85 @@ docker compose --profile local up --build
 ```
 
 
+
+## AI / WebMCP / MCP
+
+このアプリは、人間向けUIと同じ計算エンジンをAIエージェントから直接利用できるように、WebMCPとリモートMCPの両方を公開します。
+
+### WebMCP
+
+WebMCP対応ブラウザでページを開くと、`document.modelContext.registerTool()` を使って次の4ツールを登録します。
+
+| Tool | 用途 |
+| --- | --- |
+| `yw2_search_yokai` | 名前・番号・species IDから妖怪を検索 |
+| `yw2_list_score_profiles` | 役割別のIV評価軸を取得 |
+| `yw2_calculate_stats` | IVから表示ステータスを順計算 |
+| `yw2_reverse_search` | 実機ステータスからIV候補を逆算 |
+
+`yw2_calculate_stats` と `yw2_reverse_search` をWebMCPから実行した場合は、返り値を返すだけでなく、ページ上の順計算・逆算フォームと結果表示も同じ状態へ同期します。これによりブラウザエージェントがユーザーの代わりにサイトを操作した結果を、そのまま画面でも確認できます。
+
+WebMCP未対応ブラウザでは通常のWebアプリとして動作し、WebMCP部分だけが無効になります。
+
+### リモートMCP
+
+本番サーバーは同一originの `/mcp` にStreamable HTTP MCP endpointを公開します。
+
+```text
+https://<PUBLIC_ORIGIN>/mcp
+```
+
+MCP `2026-07-28` のstateless protocolに対応し、`server/discover`、`tools/list`、`tools/call` を実装しています。既存クライアント向けに2025系の `initialize` フローも受け付けます。
+
+2026-07-28形式のdiscovery例:
+
+```sh
+curl -sS https://<PUBLIC_ORIGIN>/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'MCP-Protocol-Version: 2026-07-28' \
+  -H 'Mcp-Method: server/discover' \
+  --data '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "server/discover",
+    "params": {
+      "_meta": {
+        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+        "io.modelcontextprotocol/clientCapabilities": {},
+        "io.modelcontextprotocol/clientInfo": {
+          "name": "curl",
+          "version": "1.0.0"
+        }
+      }
+    }
+  }'
+```
+
+MCPサーバーとWebMCPは `src/agent/tools.ts` の同一ツール実装を共有するため、ブラウザと外部AIで計算結果が分岐しない構成です。
+
+### MCP認証
+
+計算・検索ツールはゲームやアカウントを書き換えないため、デフォルトでは `/mcp` は認証なしで利用できます。公開先を限定したい場合は、runtimeに `MCP_BEARER_TOKEN` を設定するとBearer認証が有効になります。
+
+```sh
+MCP_BEARER_TOKEN='replace-me' npm start
+```
+
+その場合、クライアントは次を送信します。
+
+```text
+Authorization: Bearer replace-me
+```
+
+### ローカルでMCP込みのproduction runtimeを起動
+
+```sh
+npm run build
+npm start
+```
+
+デフォルトでは `http://localhost:8080/` がUI、`http://localhost:8080/mcp` がMCP endpoint、`http://localhost:8080/healthz` がhealth checkです。
+
 ## GitOps / Argo CD
 
 本番用manifestは `infra/kubernetes`、Argo CD Application定義は `infra/argocd/application.yaml` に置いています。
