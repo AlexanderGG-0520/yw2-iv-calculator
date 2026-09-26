@@ -97,9 +97,10 @@ jobs:
             exit 0
           fi
 
-          # The merge commit intentionally retains the legacy nginx:80
-          # manifest. Only after the new Node image has been published do
-          # we atomically switch image SHA, ports, probes and securityContext.
+          # The merge commit first stages a named "http" port on the legacy
+          # nginx:80 Pods. Only after the new Node image has been published do
+          # we switch image SHA, container port, probes and securityContext.
+          # Service targetPort stays named, so mixed old:80/new:8080 Pods remain routable.
           node scripts/render-kubernetes-deployment.mjs "$IMAGE_SHA"
 
       - name: Commit deployment revision
