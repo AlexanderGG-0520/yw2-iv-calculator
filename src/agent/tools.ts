@@ -46,9 +46,12 @@ export interface ForwardToolResult {
   stats: StatBlock;
 }
 
-export interface ReverseToolResult {
+export interface PreparedReverseToolRequest {
   species: Pick<YokaiSpecies, "id" | "number" | "name">;
   input: SearchInput;
+}
+
+export interface ReverseToolResult extends PreparedReverseToolRequest {
   response: SearchResponse;
 }
 
@@ -400,7 +403,7 @@ export function calculateStatsForAgent(args: unknown): ForwardToolResult {
   };
 }
 
-export function reverseSearchForAgent(args: unknown): ReverseToolResult {
+export function prepareReverseSearchForAgent(args: unknown): PreparedReverseToolRequest {
   const record = assertRecord(args, "arguments");
   const species = resolveSpecies(record.species);
   const level = integer(record.level, "level", 1, 99);
@@ -412,22 +415,34 @@ export function reverseSearchForAgent(args: unknown): ReverseToolResult {
   const maxResults =
     record.maxResults === undefined ? 20 : integer(record.maxResults, "maxResults", 1, 100);
 
-  const input: SearchInput = {
-    speciesId: species.id,
-    level,
-    observed,
-    ev,
-    sessions,
-    equipment,
-    scoreProfile,
-    maxResults,
-  };
-
   return {
     species: speciesSummary(species),
-    input,
-    response: reverseSearch(input),
+    input: {
+      speciesId: species.id,
+      level,
+      observed,
+      ev,
+      sessions,
+      equipment,
+      scoreProfile,
+      maxResults,
+    },
   };
+}
+
+export function completeReverseSearchForAgent(
+  prepared: PreparedReverseToolRequest,
+  response: SearchResponse,
+): ReverseToolResult {
+  return {
+    ...prepared,
+    response,
+  };
+}
+
+export function reverseSearchForAgent(args: unknown): ReverseToolResult {
+  const prepared = prepareReverseSearchForAgent(args);
+  return completeReverseSearchForAgent(prepared, reverseSearch(prepared.input));
 }
 
 export function executeAgentTool(name: string, args: unknown): unknown {
