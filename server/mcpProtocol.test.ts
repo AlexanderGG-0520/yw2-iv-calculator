@@ -19,6 +19,11 @@ function modernParams(extra: Record<string, unknown> = {}) {
     ...extra,
     _meta: {
       [META_KEY]: MCP_MODERN_VERSION,
+      "io.modelcontextprotocol/clientCapabilities": {},
+      "io.modelcontextprotocol/clientInfo": {
+        name: "yw2-test-client",
+        version: "1.0.0",
+      },
     },
   };
 }
@@ -98,10 +103,37 @@ describe("MCP protocol", () => {
     expect(payload.error.code).toBe(-32020);
   });
 
+  it("rejects unsupported modern protocol versions with the MCP error code", () => {
+    const unsupported = "2026-09-01";
+    const response = handleMcpRpc(
+      {
+        jsonrpc: "2.0",
+        id: 5,
+        method: "tools/list",
+        params: {
+          _meta: {
+            [META_KEY]: unsupported,
+            "io.modelcontextprotocol/clientCapabilities": {},
+          },
+        },
+      },
+      {
+        "MCP-Protocol-Version": unsupported,
+        "Mcp-Method": "tools/list",
+      },
+    );
+
+    expect(response.status).toBe(400);
+    const payload = response.payload as any;
+    expect(payload.error.code).toBe(-32022);
+    expect(payload.error.data.requested).toBe(unsupported);
+    expect(payload.error.data.supported).toContain(MCP_MODERN_VERSION);
+  });
+
   it("keeps legacy initialize + tools/list compatibility", () => {
     const initialize = handleMcpRpc({
       jsonrpc: "2.0",
-      id: 5,
+      id: 6,
       method: "initialize",
       params: {
         protocolVersion: "2025-06-18",
@@ -115,7 +147,7 @@ describe("MCP protocol", () => {
 
     const list = handleMcpRpc({
       jsonrpc: "2.0",
-      id: 6,
+      id: 7,
       method: "tools/list",
       params: {},
     });
@@ -128,7 +160,7 @@ describe("MCP protocol", () => {
   it("returns tool validation failures as MCP tool errors", () => {
     const response = handleMcpRpc({
       jsonrpc: "2.0",
-      id: 7,
+      id: 8,
       method: "tools/call",
       params: {
         name: "yw2_calculate_stats",
