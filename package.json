@@ -10,7 +10,8 @@
     "test": "vitest run",
     "preview": "vite preview --host 0.0.0.0",
     "sync:yokai": "node scripts/sync-yokai-data.mjs",
-    "build:server": "vite build --ssr server/index.ts --outDir dist-server"
+    "build:server": "vite build --ssr server/index.ts --outDir dist-server",
+    "start": "node dist-server/index.js"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^6.1.1",
