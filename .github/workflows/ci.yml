@@ -36,6 +36,7 @@ jobs:
           set -euo pipefail
 
           docker build -t yw2-iv-calculator:test .
+          [[ "$(docker image inspect yw2-iv-calculator:test --format '{{.Config.User}}')" == "1000:1000" ]]
           container="$(docker run -d -e MCP_REVERSE_TIMEOUT_MS=10 -p 18080:8080 yw2-iv-calculator:test)"
           trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
 
