@@ -41,10 +41,13 @@ export function runReverseSearchInBrowserWorker(
     };
 
     worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
-      if (event.data.ok) {
-        finish(() => resolve(event.data.response));
+      const message = event.data;
+      if (message.ok) {
+        const response = message.response;
+        finish(() => resolve(response));
       } else {
-        finish(() => reject(new Error(event.data.error)));
+        const error = message.error;
+        finish(() => reject(new Error(error)));
       }
     };
 
