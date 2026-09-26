@@ -29,3 +29,45 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Docker runtime smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          docker build -t yw2-iv-calculator:test .
+          container="$(docker run -d -p 18080:8080 yw2-iv-calculator:test)"
+          trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
+
+          for attempt in {1..20}; do
+            if curl -fsS http://127.0.0.1:18080/healthz >/dev/null; then
+              break
+            fi
+            if [[ "$attempt" -eq 20 ]]; then
+              docker logs "$container"
+              exit 1
+            fi
+            sleep 1
+          done
+
+          curl -fsS http://127.0.0.1:18080/healthz | grep -q '^ok
+
+          curl -fsS http://127.0.0.1:18080/mcp \
+            -H 'Content-Type: application/json' \
+            -H 'MCP-Protocol-Version: 2026-07-28' \
+            -H 'Mcp-Method: server/discover' \
+            --data '{
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "server/discover",
+              "params": {
+                "_meta": {
+                  "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                  "io.modelcontextprotocol/clientCapabilities": {},
+                  "io.modelcontextprotocol/clientInfo": {
+                    "name": "ci-smoke-test",
+                    "version": "1.0.0"
+                  }
+                }
+              }
+            }' | grep -q '"supportedVersions"'
