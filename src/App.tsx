@@ -1,4 +1,4 @@
-import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { Copy, Search } from "lucide-react";
 import { calculateStats, evWeightedTotal, isValidIvSpread, ivWeightedTotal } from "./engine/calculationEngine";
 import { fitnessFromSessions, totalSessions } from "./engine/fitness";
@@ -13,6 +13,12 @@ import {
   type StatKey,
 } from "./engine/types";
 import { getYokaiSpecies, YOKAI } from "./engine/yokaiData";
+import {
+  WEBMCP_FORWARD_RESULT_EVENT,
+  WEBMCP_REVERSE_RESULT_EVENT,
+  type ForwardToolResult,
+  type ReverseToolResult,
+} from "./agent/tools";
 
 const statLabel: Record<StatKey, string> = {
   hp: "HP",
@@ -50,6 +56,45 @@ function App() {
   const [forwardEv, setForwardEv] = useState<StatBlock>(zeroBlock);
   const [forwardSessions, setForwardSessions] = useState<SportsSessions>(zeroSessions);
   const [forwardEquipment, setForwardEquipment] = useState<StatBlock>(zeroBlock);
+
+  useEffect(() => {
+    const onReverseResult = (event: Event) => {
+      const detail = (event as CustomEvent<ReverseToolResult>).detail;
+      if (!detail) return;
+
+      setFilter("");
+      setSpeciesId(detail.input.speciesId);
+      setLevel(detail.input.level);
+      setObserved(detail.input.observed);
+      setEv(detail.input.ev);
+      setSessions(detail.input.sessions);
+      setEquipment(detail.input.equipment);
+      setScoreProfile(detail.input.scoreProfile);
+      setResponse(detail.response);
+      setWorking(false);
+      setError("");
+    };
+
+    const onForwardResult = (event: Event) => {
+      const detail = (event as CustomEvent<ForwardToolResult>).detail;
+      if (!detail) return;
+
+      setForwardSpeciesId(detail.input.speciesId);
+      setForwardLevel(detail.input.level);
+      setForwardIv(detail.input.iv);
+      setForwardEv(detail.input.ev);
+      setForwardSessions(detail.input.sessions);
+      setForwardEquipment(detail.input.equipment);
+    };
+
+    window.addEventListener(WEBMCP_REVERSE_RESULT_EVENT, onReverseResult);
+    window.addEventListener(WEBMCP_FORWARD_RESULT_EVENT, onForwardResult);
+
+    return () => {
+      window.removeEventListener(WEBMCP_REVERSE_RESULT_EVENT, onReverseResult);
+      window.removeEventListener(WEBMCP_FORWARD_RESULT_EVENT, onForwardResult);
+    };
+  }, []);
 
   const filteredYokai = useMemo(() => {
     const q = filter.trim().toLowerCase();
