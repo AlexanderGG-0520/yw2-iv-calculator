@@ -50,9 +50,9 @@ describe("WebMCP registration", () => {
       },
     };
 
-    let forwarded: ForwardToolResult | null = null;
+    const forwarded: { current: ForwardToolResult | null } = { current: null };
     const listener = (event: Event) => {
-      forwarded = (event as CustomEvent<ForwardToolResult>).detail;
+      forwarded.current = (event as CustomEvent<ForwardToolResult>).detail;
     };
     window.addEventListener(WEBMCP_FORWARD_RESULT_EVENT, listener);
 
@@ -67,7 +67,7 @@ describe("WebMCP registration", () => {
     });
 
     expect(typeof result).toBe("string");
-    expect(forwarded?.stats).toEqual({
+    expect(forwarded.current?.stats).toEqual({
       hp: 169,
       strength: 79,
       spirit: 68,
