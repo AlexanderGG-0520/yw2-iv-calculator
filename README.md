@@ -149,6 +149,26 @@ curl -sS https://<PUBLIC_ORIGIN>/mcp \
 
 MCPサーバーとWebMCPは `src/agent/tools.ts` の同一ツール実装を共有するため、ブラウザと外部AIで計算結果が分岐しない構成です。
 
+逆算はCPU負荷が高いため、Remote MCPではNodeのHTTP event loop上で直接実行しません。専用の `worker_threads` Workerへ隔離し、同時実行は1件、デフォルトtimeoutは5秒です。timeoutは最大30秒まで `MCP_REVERSE_TIMEOUT_MS` で変更できます。WebMCP側も通常UIと同じWeb Worker経路を使い、WebMCPの実行キャンセル用 `AbortSignal` をWorker終了へ伝播します。
+
+### MCP Origin allowlist
+
+Streamable HTTPのDNS rebinding対策として、`Origin` ヘッダーが付いたリクエストは明示allowlistと照合します。不一致はbodyを処理せずHTTP 403で拒否します。通常のMCPクライアントのように `Origin` を送らないリクエストは許可します。
+
+デフォルトの許可originは次です。
+
+```text
+https://yw2-iv.alec-ofc.com
+```
+
+追加・変更する場合はカンマ区切りで指定します。
+
+```sh
+MCP_ALLOWED_ORIGINS='https://yw2-iv.alec-ofc.com,http://localhost:8080' npm start
+```
+
+CORSも `*` ではなく、許可済みOriginだけをそのまま `Access-Control-Allow-Origin` に返します。
+
 ### MCP認証
 
 計算・検索ツールはゲームやアカウントを書き換えないため、デフォルトでは `/mcp` は認証なしで利用できます。公開先を限定したい場合は、runtimeに `MCP_BEARER_TOKEN` を設定するとBearer認証が有効になります。
