@@ -16,7 +16,7 @@ spec:
         - name: web
           image: ghcr.io/alexandergg-0520/yw2-iv-calculator:354f775ccfe4b224617ea8bd0a848adc03a999c8
           ports:
-            - containerPort: 8080
+            - containerPort: 80
           resources:
             requests:
               cpu: 25m
@@ -26,22 +26,18 @@ spec:
               memory: 128Mi
           readinessProbe:
             httpGet:
-              path: /healthz
-              port: 8080
+              path: /
+              port: 80
             initialDelaySeconds: 2
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /healthz
-              port: 8080
+              path: /
+              port: 80
             initialDelaySeconds: 10
             periodSeconds: 30
           securityContext:
             allowPrivilegeEscalation: false
-            runAsNonRoot: true
-            capabilities:
-              drop:
-                - ALL
 ---
 apiVersion: v1
 kind: Service
@@ -52,4 +48,4 @@ spec:
     app: yw2-iv-calculator
   ports:
     - port: 80
-      targetPort: 8080
+      targetPort: 80
