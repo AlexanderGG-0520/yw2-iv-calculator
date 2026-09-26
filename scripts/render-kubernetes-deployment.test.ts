@@ -25,7 +25,12 @@ describe("GitOps deployment renderer", () => {
     expect(manifest).toContain(`yw2-iv-calculator:${sha}`);
     expect(manifest).toContain("containerPort: 8080");
     expect(manifest).toContain("path: /healthz");
-    expect(manifest).toContain("targetPort: 8080");
+    expect(manifest).toContain('argocd.argoproj.io/sync-wave: "0"');
+    expect(manifest).toContain('argocd.argoproj.io/sync-wave: "1"');
+    expect(manifest).toContain("maxUnavailable: 0");
+    expect(manifest).toContain("maxSurge: 1");
+    expect(manifest).toContain("- name: http");
+    expect(manifest).toContain("targetPort: http");
     expect(manifest).toContain("runAsNonRoot: true");
     expect(manifest).toContain("runAsUser: 1000");
     expect(manifest).toContain("runAsGroup: 1000");
