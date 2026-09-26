@@ -84,7 +84,7 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Update immutable image tag
+      - name: Render published runtime deployment
         env:
           IMAGE_SHA: ${{ github.sha }}
         shell: bash
@@ -97,27 +97,11 @@ jobs:
             exit 0
           fi
 
-          python - <<'PY'
-          import os
-          import re
-          from pathlib import Path
-
-          sha = os.environ["IMAGE_SHA"]
-          path = Path("infra/kubernetes/app.yaml")
-          content = path.read_text()
-
-          content, count = re.subn(
-              r"(image:\s+ghcr\.io/alexandergg-0520/yw2-iv-calculator:)[^\s]+",
-              rf"\g<1>{sha}",
-              content,
-          )
-          if count != 1:
-              raise SystemExit(
-                  f"expected exactly one yw2-iv-calculator image reference, found {count}"
-              )
-
-          path.write_text(content)
-          PY
+          # The merge commit first stages a named "http" port on the legacy
+          # nginx:80 Pods. Only after the new Node image has been published do
+          # we switch image SHA, container port, probes and securityContext.
+          # Service targetPort stays named, so mixed old:80/new:8080 Pods remain routable.
+          node scripts/render-kubernetes-deployment.mjs "$IMAGE_SHA"
 
       - name: Commit deployment revision
         env:

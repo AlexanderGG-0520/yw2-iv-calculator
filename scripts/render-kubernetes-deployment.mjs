@@ -1,4 +1,12 @@
-apiVersion: apps/v1
+import fs from "node:fs";
+
+const sha = process.argv[2];
+if (!/^[0-9a-f]{40}$/.test(sha ?? "")) {
+  console.error("usage: node scripts/render-kubernetes-deployment.mjs <40-char git sha>");
+  process.exit(2);
+}
+
+const manifest = `apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: yw2-iv-calculator
@@ -21,10 +29,10 @@ spec:
     spec:
       containers:
         - name: web
-          image: ghcr.io/alexandergg-0520/yw2-iv-calculator:354f775ccfe4b224617ea8bd0a848adc03a999c8
+          image: ghcr.io/alexandergg-0520/yw2-iv-calculator:${sha}
           ports:
             - name: http
-              containerPort: 80
+              containerPort: 8080
           resources:
             requests:
               cpu: 25m
@@ -34,18 +42,24 @@ spec:
               memory: 128Mi
           readinessProbe:
             httpGet:
-              path: /
-              port: 80
+              path: /healthz
+              port: 8080
             initialDelaySeconds: 2
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /
-              port: 80
+              path: /healthz
+              port: 8080
             initialDelaySeconds: 10
             periodSeconds: 30
           securityContext:
             allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            capabilities:
+              drop:
+                - ALL
 ---
 apiVersion: v1
 kind: Service
@@ -60,3 +74,6 @@ spec:
     - name: http
       port: 80
       targetPort: http
+`;
+
+fs.writeFileSync("infra/kubernetes/app.yaml", manifest);

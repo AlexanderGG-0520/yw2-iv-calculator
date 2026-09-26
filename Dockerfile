@@ -1,4 +1,4 @@
-FROM node:25-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 
 COPY package*.json ./
@@ -7,9 +7,14 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM nginx:1.29-alpine AS runtime
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/dist /usr/share/nginx/html
+FROM node:24-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=8080
 
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+COPY --from=build --chown=1000:1000 /app/dist ./dist
+COPY --from=build --chown=1000:1000 /app/dist-server ./dist-server
+
+USER 1000:1000
+EXPOSE 8080
+CMD ["node", "dist-server/index.js"]

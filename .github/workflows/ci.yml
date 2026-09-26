@@ -19,7 +19,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Install dependencies
         run: npm ci
@@ -29,3 +29,85 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Docker runtime smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          docker build -t yw2-iv-calculator:test .
+          [[ "$(docker image inspect yw2-iv-calculator:test --format '{{.Config.User}}')" == "1000:1000" ]]
+          container="$(docker run -d -e MCP_REVERSE_TIMEOUT_MS=10 -p 18080:8080 yw2-iv-calculator:test)"
+          trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
+
+          for attempt in {1..20}; do
+            if health="$(curl -fsS http://127.0.0.1:18080/healthz 2>/dev/null)"; then
+              [[ "$health" == "ok" ]]
+              break
+            fi
+            if [[ "$attempt" -eq 20 ]]; then
+              docker logs "$container"
+              exit 1
+            fi
+            sleep 1
+          done
+
+          curl -fsS http://127.0.0.1:18080/mcp \
+            -H 'Content-Type: application/json' \
+            -H 'MCP-Protocol-Version: 2026-07-28' \
+            -H 'Mcp-Method: server/discover' \
+            --data '{
+              "jsonrpc": "2.0",
+              "id": 1,
+              "method": "server/discover",
+              "params": {
+                "_meta": {
+                  "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                  "io.modelcontextprotocol/clientCapabilities": {},
+                  "io.modelcontextprotocol/clientInfo": {
+                    "name": "ci-smoke-test",
+                    "version": "1.0.0"
+                  }
+                }
+              }
+            }' | grep -q '"supportedVersions"'
+
+          # Browser-origin requests must be explicitly allowed.
+          forbidden_status="$(curl -sS -o /dev/null -w '%{http_code}'             -X OPTIONS             -H 'Origin: https://evil.example'             http://127.0.0.1:18080/mcp)"
+          [[ "$forbidden_status" == "403" ]]
+
+          curl -sS -D - -o /dev/null             -X OPTIONS             -H 'Origin: https://yw2-iv.alec-ofc.com'             http://127.0.0.1:18080/mcp             | tr -d '\r'             | grep -q '^Access-Control-Allow-Origin: https://yw2-iv.alec-ofc.com$'
+
+          # Reverse search executes in a worker thread and is bounded by timeout.
+          reverse_result="$(curl -fsS http://127.0.0.1:18080/mcp             -H 'Content-Type: application/json'             -H 'MCP-Protocol-Version: 2026-07-28'             -H 'Mcp-Method: tools/call'             -H 'Mcp-Name: yw2_reverse_search'             --data '{
+              "jsonrpc": "2.0",
+              "id": 2,
+              "method": "tools/call",
+              "params": {
+                "name": "yw2_reverse_search",
+                "arguments": {
+                  "species": "yw2-136",
+                  "level": 1,
+                  "observed": {
+                    "hp": 43,
+                    "strength": 21,
+                    "spirit": 18,
+                    "defense": 19,
+                    "speed": 23
+                  }
+                },
+                "_meta": {
+                  "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                  "io.modelcontextprotocol/clientCapabilities": {},
+                  "io.modelcontextprotocol/clientInfo": {
+                    "name": "ci-smoke-test",
+                    "version": "1.0.0"
+                  }
+                }
+              }
+            }')"
+          echo "$reverse_result" | grep -q '"isError":true'
+          echo "$reverse_result" | grep -q 'timeout'
+
+          # The server event loop remains responsive after a bounded worker search.
+          [[ "$(curl -fsS http://127.0.0.1:18080/healthz)" == "ok" ]]

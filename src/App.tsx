@@ -1,4 +1,4 @@
-import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { Copy, Search } from "lucide-react";
 import { calculateStats, evWeightedTotal, isValidIvSpread, ivWeightedTotal } from "./engine/calculationEngine";
 import { fitnessFromSessions, totalSessions } from "./engine/fitness";
@@ -13,6 +13,13 @@ import {
   type StatKey,
 } from "./engine/types";
 import { getYokaiSpecies, YOKAI } from "./engine/yokaiData";
+import { runReverseSearchInBrowserWorker } from "./agent/browserReverseSearch";
+import {
+  WEBMCP_FORWARD_RESULT_EVENT,
+  WEBMCP_REVERSE_RESULT_EVENT,
+  type ForwardToolResult,
+  type ReverseToolResult,
+} from "./agent/tools";
 
 const statLabel: Record<StatKey, string> = {
   hp: "HP",
@@ -26,9 +33,6 @@ const zeroBlock = (): StatBlock => ({ hp: 0, strength: 0, spirit: 0, defense: 0,
 const balancedIv = (): StatBlock => ({ hp: 16, strength: 8, spirit: 8, defense: 8, speed: 8 });
 const zeroSessions = (): SportsSessions => ({ strength: 0, spirit: 0, defense: 0, speed: 0 });
 
-type WorkerResponse =
-  | { ok: true; response: SearchResponse }
-  | { ok: false; error: string };
 
 function App() {
   const defaultSpeciesId = YOKAI.find((entry) => entry.name === "ジバニャン")?.id ?? YOKAI[0]?.id ?? "";
@@ -50,6 +54,45 @@ function App() {
   const [forwardEv, setForwardEv] = useState<StatBlock>(zeroBlock);
   const [forwardSessions, setForwardSessions] = useState<SportsSessions>(zeroSessions);
   const [forwardEquipment, setForwardEquipment] = useState<StatBlock>(zeroBlock);
+
+  useEffect(() => {
+    const onReverseResult = (event: Event) => {
+      const detail = (event as CustomEvent<ReverseToolResult>).detail;
+      if (!detail) return;
+
+      setFilter("");
+      setSpeciesId(detail.input.speciesId);
+      setLevel(detail.input.level);
+      setObserved(detail.input.observed);
+      setEv(detail.input.ev);
+      setSessions(detail.input.sessions);
+      setEquipment(detail.input.equipment);
+      setScoreProfile(detail.input.scoreProfile);
+      setResponse(detail.response);
+      setWorking(false);
+      setError("");
+    };
+
+    const onForwardResult = (event: Event) => {
+      const detail = (event as CustomEvent<ForwardToolResult>).detail;
+      if (!detail) return;
+
+      setForwardSpeciesId(detail.input.speciesId);
+      setForwardLevel(detail.input.level);
+      setForwardIv(detail.input.iv);
+      setForwardEv(detail.input.ev);
+      setForwardSessions(detail.input.sessions);
+      setForwardEquipment(detail.input.equipment);
+    };
+
+    window.addEventListener(WEBMCP_REVERSE_RESULT_EVENT, onReverseResult);
+    window.addEventListener(WEBMCP_FORWARD_RESULT_EVENT, onForwardResult);
+
+    return () => {
+      window.removeEventListener(WEBMCP_REVERSE_RESULT_EVENT, onReverseResult);
+      window.removeEventListener(WEBMCP_FORWARD_RESULT_EVENT, onForwardResult);
+    };
+  }, []);
 
   const filteredYokai = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -117,22 +160,7 @@ function App() {
     }
 
     setWorking(true);
-    const worker = new Worker(new URL("./workers/reverseSearch.worker.ts", import.meta.url), { type: "module" });
-    worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
-      if (event.data.ok) {
-        setResponse(event.data.response);
-      } else {
-        setError(event.data.error);
-      }
-      setWorking(false);
-      worker.terminate();
-    };
-    worker.onerror = (event) => {
-      setError(event.message || "逆算ワーカーでエラーが発生しました。");
-      setWorking(false);
-      worker.terminate();
-    };
-    worker.postMessage({
+    void runReverseSearchInBrowserWorker({
       speciesId,
       level,
       observed,
@@ -141,7 +169,20 @@ function App() {
       equipment,
       scoreProfile,
       maxResults: 200,
-    });
+    })
+      .then((nextResponse) => {
+        setResponse(nextResponse);
+      })
+      .catch((searchError) => {
+        setError(
+          searchError instanceof Error
+            ? searchError.message
+            : "逆算ワーカーでエラーが発生しました。",
+        );
+      })
+      .finally(() => {
+        setWorking(false);
+      });
   };
 
   const copyResult = async (result: ReverseResult) => {
