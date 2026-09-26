@@ -26,13 +26,13 @@ spec:
               memory: 128Mi
           readinessProbe:
             httpGet:
-              path: /
+              path: /healthz
               port: 8080
             initialDelaySeconds: 2
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /
+              path: /healthz
               port: 8080
             initialDelaySeconds: 10
             periodSeconds: 30
@@ -51,5 +51,5 @@ spec:
   selector:
     app: yw2-iv-calculator
   ports:
-    - port: 8080
+    - port: 80
       targetPort: 8080
