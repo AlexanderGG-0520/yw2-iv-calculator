@@ -3,11 +3,14 @@ import { readFile, stat } from "node:fs/promises";
 import { extname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { handleMcpRpc } from "./mcpProtocol";
+import { isAllowedMcpOrigin, mcpAllowedOrigins } from "./originPolicy";
+import { executeRemoteAgentTool } from "./remoteToolExecutor";
 
 const PORT = Number(process.env.PORT ?? 8080);
 const HOST = process.env.HOST ?? "0.0.0.0";
 const DIST_ROOT = fileURLToPath(new URL("../dist/", import.meta.url));
 const MAX_BODY_BYTES = 1_000_000;
+const MCP_ALLOWED_ORIGINS = mcpAllowedOrigins();
 
 const MIME_TYPES: Record<string, string> = {
   ".css": "text/css; charset=utf-8",
@@ -24,8 +27,16 @@ const MIME_TYPES: Record<string, string> = {
   ".webp": "image/webp",
 };
 
-function setCorsHeaders(res: import("node:http").ServerResponse): void {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+function setCorsHeaders(
+  req: import("node:http").IncomingMessage,
+  res: import("node:http").ServerResponse,
+): void {
+  const origin = req.headers.origin;
+  if (origin && isAllowedMcpOrigin(origin, MCP_ALLOWED_ORIGINS)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+  }
+
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader(
     "Access-Control-Allow-Headers",
@@ -78,7 +89,15 @@ async function serveMcp(
   req: import("node:http").IncomingMessage,
   res: import("node:http").ServerResponse,
 ): Promise<void> {
-  setCorsHeaders(res);
+  const origin = req.headers.origin;
+  if (!isAllowedMcpOrigin(origin, MCP_ALLOWED_ORIGINS)) {
+    res.statusCode = 403;
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.end("Forbidden");
+    return;
+  }
+
+  setCorsHeaders(req, res);
 
   if (req.method === "OPTIONS") {
     res.statusCode = 204;
@@ -109,7 +128,7 @@ async function serveMcp(
       ]),
     );
 
-    const result = handleMcpRpc(body, headers);
+    const result = await handleMcpRpc(body, headers, executeRemoteAgentTool);
     if (result.payload === undefined) {
       res.statusCode = result.status;
       res.end();
